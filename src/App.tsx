@@ -1,35 +1,100 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useSearchParams } from 'react-router-dom';
+import { AppContext } from './AppContext';
+import { useAppState } from './useAppState';
+import { decodeState } from './storage';
+import { TopBar } from './components/TopBar';
+import { SideNav } from './components/SideNav';
+import { ToastContainer } from './components/Toast';
+import { ConfirmModal } from './components/ConfirmModal';
+import { PlayerManager } from './pages/PlayerManager';
+import { TournamentManager } from './pages/TournamentManager';
+import { RankedMatchManager } from './pages/RankedMatchManager';
 
-function App() {
-  const [count, setCount] = useState(0)
+function AppShell() {
+  const appState = useAppState();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [importData, setImportData] = useState<ReturnType<typeof decodeState>>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  // Handle ?data= import param on load
+  useEffect(() => {
+    const dataParam = searchParams.get('data');
+    if (dataParam) {
+      const decoded = decodeState(dataParam);
+      if (decoded) {
+        setImportData(decoded);
+      }
+      setSearchParams({}, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Handle ?clearData=1 from SideNav
+  useEffect(() => {
+    if (searchParams.get('clearData') === '1') {
+      setShowClearConfirm(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  function handleImportConfirm() {
+    if (importData) {
+      appState.importState(importData);
+      setImportData(null);
+    }
+  }
+
+  function handleClearConfirm() {
+    appState.resetState();
+    setShowClearConfirm(false);
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <AppContext.Provider value={appState}>
+      <TopBar onMenuOpen={() => setMenuOpen(true)} />
+      <SideNav open={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      <main className="flex-1 pt-14">
+        <Routes>
+          <Route path="/" element={<PlayerManager />} />
+          <Route path="/tournaments" element={<TournamentManager />} />
+          <Route path="/ranked" element={<RankedMatchManager />} />
+        </Routes>
+      </main>
+
+      <ToastContainer />
+
+      {importData && (
+        <ConfirmModal
+          title="Import Data"
+          message="This will replace all existing players, matches, and tournaments with the imported data. This cannot be undone."
+          confirmLabel="Yes, Import"
+          danger
+          onConfirm={handleImportConfirm}
+          onCancel={() => setImportData(null)}
+        />
+      )}
+
+      {showClearConfirm && (
+        <ConfirmModal
+          title="Clear All Data"
+          message="This will permanently delete all players, matches, and tournaments. This cannot be undone. Are you absolutely sure?"
+          confirmLabel="Yes, Delete Everything"
+          danger
+          onConfirm={handleClearConfirm}
+          onCancel={() => setShowClearConfirm(false)}
+        />
+      )}
+    </AppContext.Provider>
+  );
 }
 
-export default App
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
+  );
+}

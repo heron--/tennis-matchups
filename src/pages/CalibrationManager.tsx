@@ -40,6 +40,10 @@ export function CalibrationManager() {
         session={session}
         players={state.players}
         onBack={() => setView('list')}
+        onEndEarly={() => {
+          updateCalibrationSession(session.id, { status: 'completed' });
+          showToast('Session ended early');
+        }}
         onRecordMatch={(matchupId, p1Score, p2Score, winnerId) => {
           const round = session.rounds[session.currentRound - 1];
           const matchup = round.matchups.find(m => m.id === matchupId)!;
@@ -236,12 +240,12 @@ function CreateCalibration({
         <label className="block text-xs font-bold tracking-widest uppercase text-slate-500 mb-2">
           Number of Rounds
         </label>
-        <div className="flex gap-2">
-          {[3, 5, 7, 10].map(n => (
+        <div className="grid grid-cols-5 gap-2">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
             <button
               key={n}
               onClick={() => setTotalRounds(n)}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors min-h-[48px] ${
+              className={`py-3 rounded-xl font-bold text-sm transition-colors min-h-[48px] ${
                 totalRounds === n
                   ? 'bg-indigo-600 text-white border border-indigo-400'
                   : 'bg-[#22263a] text-slate-400 border border-[#2e3350] active:bg-[#2e3350]'
@@ -305,14 +309,17 @@ function SessionView({
   session,
   players,
   onBack,
+  onEndEarly,
   onRecordMatch,
 }: {
   session: CalibrationSession;
   players: Player[];
   onBack: () => void;
+  onEndEarly: () => void;
   onRecordMatch: (matchupId: string, p1Score: number, p2Score: number, winnerId: string) => void;
 }) {
   const [recordingMatchup, setRecordingMatchup] = useState<CalibrationMatchup | null>(null);
+  const [showEndEarlyConfirm, setShowEndEarlyConfirm] = useState(false);
 
   const playerMap = new Map(players.map(p => [p.id, p]));
   const sessionPlayers = session.playerIds
@@ -368,6 +375,14 @@ function SessionView({
             {session.status === 'completed' ? 'Completed' : 'In Progress'}
           </span>
         </div>
+        {session.status === 'in_progress' && (
+          <button
+            onClick={() => setShowEndEarlyConfirm(true)}
+            className="text-xs font-bold text-red-400 active:text-red-300 px-3 py-2 rounded-lg active:bg-red-950/40 transition-colors min-h-[44px]"
+          >
+            End Early
+          </button>
+        )}
       </div>
 
       <div className="px-4 pt-5">
@@ -474,6 +489,20 @@ function SessionView({
             setRecordingMatchup(null);
             showToast('Match recorded!');
           }}
+        />
+      )}
+
+      {showEndEarlyConfirm && (
+        <ConfirmModal
+          title="End Session Early"
+          message="Mark this calibration session as completed now? Any unplayed matches in the current round will be skipped."
+          confirmLabel="End Session"
+          danger
+          onConfirm={() => {
+            setShowEndEarlyConfirm(false);
+            onEndEarly();
+          }}
+          onCancel={() => setShowEndEarlyConfirm(false)}
         />
       )}
     </div>

@@ -146,6 +146,56 @@ export function generateBracket(
     losersRounds.push(round);
   }
 
+  // Mark losers bracket byes caused by winners bracket R0 byes.
+  // When a WB R0 matchup is a bye, it produces no loser, so the corresponding
+  // LB R0 slot stays permanently empty. This cascades forward.
+  if (losersRounds.length > 0) {
+    // Track which LB matchups will never produce a winner (both feeder slots empty)
+    const fullyDead = new Set<string>();
+
+    // Phase 1: Mark LB R0 byes based on WB R0 byes
+    for (let mi = 0; mi < losersRounds[0].length; mi++) {
+      const feederA = firstRound[mi * 2];
+      const feederB = firstRound[mi * 2 + 1];
+      const aIsBye = !feederA || feederA.isBye;
+      const bIsBye = !feederB || feederB.isBye;
+
+      if (aIsBye || bIsBye) {
+        losersRounds[0][mi].isBye = true;
+      }
+      if (aIsBye && bIsBye) {
+        fullyDead.add(`0-${mi}`);
+      }
+    }
+
+    // Phase 2: Propagate through subsequent LB rounds
+    for (let ri = 1; ri < losersRounds.length; ri++) {
+      const isMinor = ri % 2 === 0;
+
+      for (let mi = 0; mi < losersRounds[ri].length; mi++) {
+        if (isMinor) {
+          // Minor round: both players come from previous major round winners
+          const p1Dead = fullyDead.has(`${ri - 1}-${mi * 2}`);
+          const p2Dead = fullyDead.has(`${ri - 1}-${mi * 2 + 1}`);
+          if (p1Dead || p2Dead) {
+            losersRounds[ri][mi].isBye = true;
+          }
+          if (p1Dead && p2Dead) {
+            fullyDead.add(`${ri}-${mi}`);
+          }
+        } else {
+          // Major round: player1 from previous minor round, player2 from WB drop-down.
+          // WB drop-downs always arrive, so only player1 can be dead.
+          const p1Dead = fullyDead.has(`${ri - 1}-${mi}`);
+          if (p1Dead) {
+            losersRounds[ri][mi].isBye = true;
+            // Not fully dead because player2 (WB drop-down) will always arrive
+          }
+        }
+      }
+    }
+  }
+
   const grandFinal: Matchup = {
     id: uuid(),
     player1Id: null,
@@ -166,6 +216,56 @@ export function generateBracket(
     grandFinal,
     createdAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Auto-resolve any losers bracket matchups that are marked as byes and have
+ * exactly one player (the other slot will never be filled). Propagates the
+ * winner forward, which may trigger further bye resolutions.
+ */
+function resolveLBByeChain(t: Tournament): Tournament {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let ri = 0; ri < t.losersRounds.length; ri++) {
+      for (let mi = 0; mi < t.losersRounds[ri].length; mi++) {
+        const m = t.losersRounds[ri][mi];
+        if (!m.isBye || m.winnerId) continue;
+
+        const hasP1 = m.player1Id !== null;
+        const hasP2 = m.player2Id !== null;
+
+        // Exactly one player in a bye matchup → auto-resolve
+        if (hasP1 !== hasP2) {
+          m.winnerId = (m.player1Id ?? m.player2Id)!;
+
+          const isLastLbRound = ri === t.losersRounds.length - 1;
+          if (!isLastLbRound) {
+            const isMinorRound = ri % 2 === 0;
+            if (isMinorRound) {
+              // Minor → major: 1:1 mapping, winner goes to player1 slot
+              if (mi < t.losersRounds[ri + 1].length) {
+                t.losersRounds[ri + 1][mi].player1Id = m.winnerId;
+              }
+            } else {
+              // Major → minor: pair up winners
+              const nextMi = Math.floor(mi / 2);
+              const slot = mi % 2 === 0 ? 'player1Id' : 'player2Id';
+              if (nextMi < t.losersRounds[ri + 1].length) {
+                t.losersRounds[ri + 1][nextMi][slot] = m.winnerId;
+              }
+            }
+          } else {
+            // Last LB round winner goes to grand final
+            if (t.grandFinal) t.grandFinal.player2Id = m.winnerId;
+          }
+
+          changed = true;
+        }
+      }
+    }
+  }
+  return t;
 }
 
 /**
@@ -217,7 +317,7 @@ export function advanceWinnersBracket(
     }
   }
 
-  return t;
+  return resolveLBByeChain(t);
 }
 
 /**
@@ -256,7 +356,7 @@ export function advanceLosersBracket(
     if (t.grandFinal) t.grandFinal.player2Id = winnerId;
   }
 
-  return t;
+  return resolveLBByeChain(t);
 }
 
 /**

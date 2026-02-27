@@ -4,6 +4,7 @@ const PAGE_LABELS: Record<string, string> = {
   '/': 'Player Manager',
   '/tournaments': 'Tournaments',
   '/ranked': 'Ranked Match',
+  '/calibration': 'Calibration',
 };
 
 interface TopBarProps {

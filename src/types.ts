@@ -16,8 +16,9 @@ export interface MatchRecord {
   winnerId: string;
   eloChange: number;
   timestamp: string;
-  context: 'ranked' | 'tournament';
+  context: 'ranked' | 'tournament' | 'calibration';
   tournamentId?: string;
+  calibrationSessionId?: string;
 }
 
 export interface Matchup {
@@ -43,8 +44,36 @@ export interface Tournament {
   createdAt: string;
 }
 
+export interface CalibrationMatchup {
+  id: string;
+  player1Id: string;
+  player2Id: string;
+  winnerId: string | null;
+  player1Score: number | null;
+  player2Score: number | null;
+}
+
+export interface CalibrationRound {
+  roundNumber: number;
+  matchups: CalibrationMatchup[];
+  byePlayerId: string | null;
+  completed: boolean;
+}
+
+export interface CalibrationSession {
+  id: string;
+  playerIds: string[];
+  totalRounds: number;
+  currentRound: number;
+  rounds: CalibrationRound[];
+  status: 'in_progress' | 'completed';
+  startingElos: Record<string, number>;
+  createdAt: string;
+}
+
 export interface AppState {
   players: Player[];
   matches: MatchRecord[];
   tournaments: Tournament[];
+  calibrationSessions: CalibrationSession[];
 }

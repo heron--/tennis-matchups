@@ -10,6 +10,7 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { PlayerManager } from './pages/PlayerManager';
 import { TournamentManager } from './pages/TournamentManager';
 import { RankedMatchManager } from './pages/RankedMatchManager';
+import { CalibrationManager } from './pages/CalibrationManager';
 
 function AppShell() {
   const appState = useAppState();
@@ -76,6 +77,7 @@ function AppShell() {
           <Route path="/" element={<PlayerManager />} />
           <Route path="/tournaments" element={<TournamentManager />} />
           <Route path="/ranked" element={<RankedMatchManager />} />
+          <Route path="/calibration" element={<CalibrationManager />} />
         </Routes>
       </main>
 

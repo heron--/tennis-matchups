@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { AppState, Player, MatchRecord, Tournament } from './types';
+import type { AppState, Player, MatchRecord, Tournament, CalibrationSession } from './types';
 import { loadState, saveState, clearState, DEFAULT_STATE } from './storage';
 import { calculateEloUpdate } from './elo';
 
@@ -49,17 +49,23 @@ export function useAppState() {
       player1Score: number,
       player2Score: number,
       winnerId: string,
-      context: 'ranked' | 'tournament',
-      tournamentId?: string
+      context: 'ranked' | 'tournament' | 'calibration',
+      tournamentId?: string,
+      calibrationSessionId?: string
     ) => {
       setState(s => {
         const winner = s.players.find(p => p.id === winnerId)!;
         const loserId = winnerId === player1Id ? player2Id : player1Id;
         const loser = s.players.find(p => p.id === loserId)!;
 
+        const winnerScore = winnerId === player1Id ? player1Score : player2Score;
+        const loserScore = winnerId === player1Id ? player2Score : player1Score;
+
         const { winnerNewElo, loserNewElo, eloChange } = calculateEloUpdate(
           winner.elo,
-          loser.elo
+          loser.elo,
+          winnerScore,
+          loserScore
         );
 
         const match: MatchRecord = {
@@ -73,6 +79,7 @@ export function useAppState() {
           timestamp: new Date().toISOString(),
           context,
           tournamentId,
+          calibrationSessionId,
         };
 
         const updatedPlayers = s.players.map(p => {
@@ -106,6 +113,21 @@ export function useAppState() {
     setState(s => ({ ...s, tournaments: s.tournaments.filter(t => t.id !== id) }));
   }, []);
 
+  const addCalibrationSession = useCallback((session: CalibrationSession) => {
+    setState(s => ({ ...s, calibrationSessions: [session, ...s.calibrationSessions] }));
+  }, []);
+
+  const updateCalibrationSession = useCallback((id: string, updates: Partial<CalibrationSession>) => {
+    setState(s => ({
+      ...s,
+      calibrationSessions: s.calibrationSessions.map(cs => (cs.id === id ? { ...cs, ...updates } : cs)),
+    }));
+  }, []);
+
+  const deleteCalibrationSession = useCallback((id: string) => {
+    setState(s => ({ ...s, calibrationSessions: s.calibrationSessions.filter(cs => cs.id !== id) }));
+  }, []);
+
   const importState = useCallback((newState: AppState) => {
     clearState();
     setState(newState);
@@ -133,6 +155,9 @@ export function useAppState() {
     addTournament,
     deleteTournament,
     updateTournament,
+    addCalibrationSession,
+    updateCalibrationSession,
+    deleteCalibrationSession,
     importState,
     resetState,
     resetElos,

@@ -6,6 +6,7 @@ const DEFAULT_STATE: AppState = {
   players: [],
   matches: [],
   tournaments: [],
+  calibrationSessions: [],
 };
 
 export function loadState(): AppState {
@@ -19,6 +20,10 @@ export function loadState(): AppState {
       Array.isArray(parsed.matches) &&
       Array.isArray(parsed.tournaments)
     ) {
+      // Migrate: default missing calibrationSessions for existing users
+      if (!Array.isArray(parsed.calibrationSessions)) {
+        parsed.calibrationSessions = [];
+      }
       return parsed as AppState;
     }
     return DEFAULT_STATE;
@@ -84,6 +89,9 @@ export async function decodeState(encoded: string): Promise<AppState | null> {
       Array.isArray(parsed.matches) &&
       Array.isArray(parsed.tournaments)
     ) {
+      if (!Array.isArray(parsed.calibrationSessions)) {
+        parsed.calibrationSessions = [];
+      }
       return parsed as AppState;
     }
     return null;

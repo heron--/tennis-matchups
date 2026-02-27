@@ -101,6 +101,15 @@ export function SideNav({ open, onClose }: SideNavProps) {
             active={pathname === '/ranked'}
           />
 
+          <NavItemDisableable
+            label="Calibration"
+            emoji="🎯"
+            disabled={!hasEnoughPlayers}
+            disabledHint="Add at least 2 players first"
+            onClick={() => handleNavClick('/calibration', !hasEnoughPlayers)}
+            active={pathname === '/calibration'}
+          />
+
           <div className="my-3 border-t border-[#2e3350]" />
 
           <NavItem

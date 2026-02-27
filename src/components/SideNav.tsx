@@ -20,14 +20,15 @@ export function SideNav({ open, onClose }: SideNavProps) {
     navigate(path);
   }
 
-  function handleExport() {
-    const encoded = encodeState(state);
+  async function handleExport() {
+    const encoded = await encodeState(state);
     const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
-    navigator.clipboard.writeText(url).then(() => {
+    try {
+      await navigator.clipboard.writeText(url);
       showToast('Share link copied!');
-    }).catch(() => {
+    } catch {
       window.prompt('Copy this link:', url);
-    });
+    }
     onClose();
   }
 

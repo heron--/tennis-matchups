@@ -138,10 +138,12 @@ function PlayerList({
       {/* FAB */}
       <button
         onClick={onAddTap}
-        className="fixed bottom-6 right-6 bg-indigo-600 active:bg-indigo-700 text-white font-bold rounded-full w-14 h-14 flex items-center justify-center shadow-xl text-2xl transition-colors z-20"
+        className="fixed bottom-6 right-6 bg-indigo-600 active:bg-indigo-700 text-white font-bold rounded-full w-14 h-14 flex items-center justify-center shadow-xl transition-colors z-20"
         aria-label="Add player"
       >
-        +
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-6 h-6" aria-hidden>
+          <path d="M12 5v14M5 12h14" />
+        </svg>
       </button>
     </div>
   );

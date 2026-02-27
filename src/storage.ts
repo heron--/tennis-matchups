@@ -39,13 +39,45 @@ export function clearState(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-export function encodeState(state: AppState): string {
-  return btoa(encodeURIComponent(JSON.stringify(state)));
+function uint8ToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function decodeState(encoded: string): AppState | null {
+function base64UrlToUint8(b64: string): ArrayBuffer {
+  const padded = b64.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (b64.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer as ArrayBuffer;
+}
+
+export async function encodeState(state: AppState): Promise<string> {
+  const json = JSON.stringify(state);
+  const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('deflate'));
+  const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
+  return 'c:' + uint8ToBase64Url(compressed);
+}
+
+export async function decodeState(encoded: string): Promise<AppState | null> {
   try {
-    const json = decodeURIComponent(atob(encoded));
+    let json: string;
+
+    if (encoded.startsWith('c:')) {
+      // Compressed format
+      const compressed = base64UrlToUint8(encoded.slice(2));
+      const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate'));
+      json = new TextDecoder().decode(await new Response(stream).arrayBuffer());
+    } else {
+      // Legacy format: btoa(encodeURIComponent(json))
+      json = decodeURIComponent(atob(encoded));
+    }
+
     const parsed = JSON.parse(json);
     if (
       Array.isArray(parsed.players) &&

@@ -15,7 +15,7 @@ function AppShell() {
   const appState = useAppState();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [importData, setImportData] = useState<ReturnType<typeof decodeState>>(null);
+  const [importData, setImportData] = useState<Awaited<ReturnType<typeof decodeState>>>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showResetElosConfirm, setShowResetElosConfirm] = useState(false);
 
@@ -23,10 +23,11 @@ function AppShell() {
   useEffect(() => {
     const dataParam = searchParams.get('data');
     if (dataParam) {
-      const decoded = decodeState(dataParam);
-      if (decoded) {
-        setImportData(decoded);
-      }
+      decodeState(dataParam).then(decoded => {
+        if (decoded) {
+          setImportData(decoded);
+        }
+      });
       setSearchParams({}, { replace: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

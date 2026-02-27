@@ -10,17 +10,39 @@ function nextPowerOfTwo(n: number): number {
   return p;
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 /**
- * Generate a double-elimination bracket seeded by Elo.
- * Players are sorted highest-to-lowest Elo. Byes go to top seeds.
- * First-round pairings: seed 1 vs seed N, seed 2 vs seed N-1, etc.
+ * Generate a double-elimination bracket.
+ * seeding: 'ranked' sorts by Elo (randomizing ties), 'random' fully shuffles.
+ * Byes go to top seeds. Pairings: seed 1 vs seed N, seed 2 vs seed N-1, etc.
  */
 export function generateBracket(
   tournamentId: string,
   name: string,
-  selectedPlayers: Player[]
+  selectedPlayers: Player[],
+  seeding: 'ranked' | 'random' = 'ranked'
 ): Tournament {
-  const seeded = [...selectedPlayers].sort((a, b) => b.elo - a.elo);
+  let seeded: Player[];
+  if (seeding === 'random') {
+    seeded = shuffle([...selectedPlayers]);
+  } else {
+    // Sort by Elo descending, randomize within tied groups
+    const groups = new Map<number, Player[]>();
+    for (const p of selectedPlayers) {
+      const group = groups.get(p.elo) ?? [];
+      group.push(p);
+      groups.set(p.elo, group);
+    }
+    const elos = [...groups.keys()].sort((a, b) => b - a);
+    seeded = elos.flatMap(elo => shuffle([...groups.get(elo)!]));
+  }
   const bracketSize = nextPowerOfTwo(seeded.length);
   const byeCount = bracketSize - seeded.length;
 
@@ -93,14 +115,25 @@ export function generateBracket(
     prevRoundSize = nextSize;
   }
 
+  // Propagate bye winners into Round 2
+  firstRound.forEach((matchup, mi) => {
+    if (matchup.isBye && matchup.winnerId) {
+      const nextMatchupIndex = Math.floor(mi / 2);
+      const slot = mi % 2 === 0 ? 'player1Id' : 'player2Id';
+      winnersRounds[1][nextMatchupIndex][slot] = matchup.winnerId;
+    }
+  });
+
   // Build losers bracket rounds (empty)
-  // In double elimination with N winners rounds:
-  // losers rounds = 2*(winnersRounds.length - 1) rounds
+  // In double elimination with N winners rounds (k = winnersRounds.length):
+  // losers bracket has 2*(k-1) rounds, alternating:
+  //   even rounds (minor): LB players play each other, field halves
+  //   odd rounds (major): LB survivors face WB drop-downs, field stays same
+  // Round sizes: bracketSize / 2^(Math.floor(r/2) + 2)
   const lbRoundCount = Math.max(0, 2 * (winnersRounds.length - 1));
   const losersRounds: Round[] = [];
   for (let r = 0; r < lbRoundCount; r++) {
-    // Losers bracket shrinks: rough sizing
-    const slots = Math.max(1, Math.floor(bracketSize / Math.pow(2, Math.floor(r / 2) + 1)));
+    const slots = Math.max(1, Math.floor(bracketSize / Math.pow(2, Math.floor(r / 2) + 2)));
     const round: Round = Array.from({ length: slots }, () => ({
       id: uuid(),
       player1Id: null,
@@ -165,13 +198,22 @@ export function advanceWinnersBracket(
   }
 
   // Send loser to losers bracket
-  // Losers from WB round `r` go to LB round `r*2` (simplified mapping)
-  const lbRound = roundIndex * 2;
+  // WB R0 losers → LB R0 (minor round, they pair up with each other)
+  // WB Rn (n≥1) losers → LB R(2n-1) (major/drop-down round)
+  const lbRound = roundIndex === 0 ? 0 : 2 * roundIndex - 1;
   if (lbRound < t.losersRounds.length) {
-    const lbMatchupIndex = Math.floor(matchupIndex / 2);
-    if (lbMatchupIndex < t.losersRounds[lbRound].length) {
-      const lbSlot = matchupIndex % 2 === 0 ? 'player1Id' : 'player2Id';
-      t.losersRounds[lbRound][lbMatchupIndex][lbSlot] = loserId;
+    if (roundIndex === 0) {
+      // Minor round: pair WB losers with each other
+      const lbMatchupIndex = Math.floor(matchupIndex / 2);
+      if (lbMatchupIndex < t.losersRounds[lbRound].length) {
+        const lbSlot = matchupIndex % 2 === 0 ? 'player1Id' : 'player2Id';
+        t.losersRounds[lbRound][lbMatchupIndex][lbSlot] = loserId;
+      }
+    } else {
+      // Major/drop-down round: 1:1 mapping, loser goes into player2 slot
+      if (matchupIndex < t.losersRounds[lbRound].length) {
+        t.losersRounds[lbRound][matchupIndex].player2Id = loserId;
+      }
     }
   }
 
@@ -195,10 +237,19 @@ export function advanceLosersBracket(
   const isLastLbRound = roundIndex === t.losersRounds.length - 1;
 
   if (!isLastLbRound) {
-    const nextMatchupIndex = Math.floor(matchupIndex / 2);
-    const slot = matchupIndex % 2 === 0 ? 'player1Id' : 'player2Id';
-    if (nextMatchupIndex < t.losersRounds[roundIndex + 1].length) {
-      t.losersRounds[roundIndex + 1][nextMatchupIndex][slot] = winnerId;
+    const isMinorRound = roundIndex % 2 === 0;
+    if (isMinorRound) {
+      // Minor → major (next round same size): 1:1 mapping, winner goes to player1 slot
+      if (matchupIndex < t.losersRounds[roundIndex + 1].length) {
+        t.losersRounds[roundIndex + 1][matchupIndex].player1Id = winnerId;
+      }
+    } else {
+      // Major → minor (next round halves): pair up winners
+      const nextMatchupIndex = Math.floor(matchupIndex / 2);
+      const slot = matchupIndex % 2 === 0 ? 'player1Id' : 'player2Id';
+      if (nextMatchupIndex < t.losersRounds[roundIndex + 1].length) {
+        t.losersRounds[roundIndex + 1][nextMatchupIndex][slot] = winnerId;
+      }
     }
   } else {
     // LB winner goes to grand final player2

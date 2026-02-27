@@ -83,8 +83,8 @@ export function PlayerManager() {
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-6">
-      <div className="text-6xl">🎾</div>
+    <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-8">
+      <div className="text-6xl mt-8">🎾</div>
       <div>
         <h1 className="text-2xl font-black text-white tracking-tight mb-2">
           No Players Yet
@@ -266,7 +266,7 @@ function AddPlayerModal({
         </div>
 
         <p className="text-xs text-slate-600 mt-3 text-center">
-          Keep adding — the modal stays open. Tap ✕ when done.
+          Keep adding — the window stays open. Tap ✕ when done.
         </p>
       </div>
     </div>

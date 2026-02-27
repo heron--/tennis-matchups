@@ -102,6 +102,10 @@ export function useAppState() {
     }));
   }, []);
 
+  const deleteTournament = useCallback((id: string) => {
+    setState(s => ({ ...s, tournaments: s.tournaments.filter(t => t.id !== id) }));
+  }, []);
+
   const importState = useCallback((newState: AppState) => {
     clearState();
     setState(newState);
@@ -112,6 +116,14 @@ export function useAppState() {
     setState(DEFAULT_STATE);
   }, []);
 
+  const resetElos = useCallback(() => {
+    setState(s => ({
+      ...s,
+      players: s.players.map(p => ({ ...p, elo: 1200, wins: 0, losses: 0 })),
+      matches: [],
+    }));
+  }, []);
+
   return {
     state,
     addPlayer,
@@ -119,9 +131,11 @@ export function useAppState() {
     deletePlayer,
     recordMatch,
     addTournament,
+    deleteTournament,
     updateTournament,
     importState,
     resetState,
+    resetElos,
   };
 }
 

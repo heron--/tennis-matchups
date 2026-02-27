@@ -17,6 +17,7 @@ function AppShell() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [importData, setImportData] = useState<ReturnType<typeof decodeState>>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showResetElosConfirm, setShowResetElosConfirm] = useState(false);
 
   // Handle ?data= import param on load
   useEffect(() => {
@@ -39,6 +40,14 @@ function AppShell() {
     }
   }, [searchParams, setSearchParams]);
 
+  // Handle ?resetElos=1 from SideNav
+  useEffect(() => {
+    if (searchParams.get('resetElos') === '1') {
+      setShowResetElosConfirm(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   function handleImportConfirm() {
     if (importData) {
       appState.importState(importData);
@@ -49,6 +58,11 @@ function AppShell() {
   function handleClearConfirm() {
     appState.resetState();
     setShowClearConfirm(false);
+  }
+
+  function handleResetElosConfirm() {
+    appState.resetElos();
+    setShowResetElosConfirm(false);
   }
 
   return (
@@ -85,6 +99,17 @@ function AppShell() {
           danger
           onConfirm={handleClearConfirm}
           onCancel={() => setShowClearConfirm(false)}
+        />
+      )}
+
+      {showResetElosConfirm && (
+        <ConfirmModal
+          title="Reset ELOs & Records"
+          message="This will reset all player ELOs to 1200 and clear all wins, losses, and match history. Players will remain on the roster. This cannot be undone."
+          confirmLabel="Yes, Reset Everything"
+          danger
+          onConfirm={handleResetElosConfirm}
+          onCancel={() => setShowResetElosConfirm(false)}
         />
       )}
     </AppContext.Provider>

@@ -36,6 +36,11 @@ export function SideNav({ open, onClose }: SideNavProps) {
     navigate('/?clearData=1');
   }
 
+  function handleResetElos() {
+    onClose();
+    navigate('/?resetElos=1');
+  }
+
   return (
     <>
       {open && (
@@ -106,6 +111,13 @@ export function SideNav({ open, onClose }: SideNavProps) {
 
         {/* Danger zone */}
         <div className="px-3 pb-6 border-t border-[#2e3350] pt-4">
+          <button
+            onClick={handleResetElos}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 active:bg-red-950/40 transition-colors min-h-[44px] text-left"
+          >
+            <span>🔄</span>
+            <span className="font-semibold text-sm">Reset ELOs & Records</span>
+          </button>
           <button
             onClick={handleClearData}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 active:bg-red-950/40 transition-colors min-h-[44px] text-left"

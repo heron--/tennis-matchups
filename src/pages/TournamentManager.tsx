@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useApp } from '../AppContext';
 import { showToast } from '../components/Toast';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { generateBracket, advanceWinnersBracket, advanceLosersBracket, isTournamentComplete } from '../bracket';
 import type { Tournament, Matchup, Player } from '../types';
 
 export function TournamentManager() {
-  const { state, addTournament, updateTournament, recordMatch } = useApp();
+  const { state, addTournament, updateTournament, deleteTournament, recordMatch } = useApp();
   const [view, setView] = useState<'list' | 'create' | { tournamentId: string }>('list');
+  const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
 
   if (view === 'create') {
     return (
@@ -101,29 +103,55 @@ export function TournamentManager() {
               month: 'short', day: 'numeric', year: 'numeric',
             });
             return (
-              <button
+              <div
                 key={t.id}
-                onClick={() => setView({ tournamentId: t.id })}
-                className="w-full bg-[#1a1d27] border border-[#2e3350] rounded-2xl px-4 py-4 flex items-center gap-4 active:bg-[#22263a] transition-colors text-left"
+                className="bg-[#1a1d27] border border-[#2e3350] rounded-2xl flex items-center"
               >
-                <div className="text-2xl">{t.status === 'completed' ? '🏆' : '⚔️'}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-white truncate">{t.name}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {t.playerIds.length} players · {date}
+                <button
+                  onClick={() => setView({ tournamentId: t.id })}
+                  className="flex-1 min-w-0 px-4 py-4 flex items-center gap-4 active:bg-[#22263a] rounded-l-2xl transition-colors text-left"
+                >
+                  <div className="text-2xl">{t.status === 'completed' ? '🏆' : '⚔️'}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-white truncate">{t.name}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      {t.playerIds.length} players · {date}
+                    </div>
                   </div>
-                </div>
-                <span className={`text-xs font-bold tracking-widest uppercase px-2 py-1 rounded-md ${
-                  t.status === 'completed'
-                    ? 'bg-green-900/40 text-green-400'
-                    : 'bg-indigo-900/40 text-indigo-400'
-                }`}>
-                  {t.status === 'completed' ? 'Done' : 'Live'}
-                </span>
-              </button>
+                  <span className={`text-xs font-bold tracking-widest uppercase px-2 py-1 rounded-md shrink-0 ${
+                    t.status === 'completed'
+                      ? 'bg-green-900/40 text-green-400'
+                      : 'bg-indigo-900/40 text-indigo-400'
+                  }`}>
+                    {t.status === 'completed' ? 'Done' : 'Live'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setDeleteTarget(t)}
+                  className="px-4 py-4 text-slate-600 active:text-red-400 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center border-l border-[#2e3350]"
+                  aria-label="Delete tournament"
+                >
+                  🗑️
+                </button>
+              </div>
             );
           })}
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Tournament"
+          message={`Delete "${deleteTarget.name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => {
+            deleteTournament(deleteTarget.id);
+            showToast(`${deleteTarget.name} deleted`, 'error');
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </div>
   );
@@ -139,6 +167,7 @@ function CreateTournament({
   const { state } = useApp();
   const tournamentNumber = state.tournaments.length + 1;
   const [name, setName] = useState(`Tournament #${tournamentNumber}`);
+  const [seeding, setSeeding] = useState<'ranked' | 'random'>('ranked');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(state.players.map(p => p.id))
   );
@@ -160,7 +189,7 @@ function CreateTournament({
       return;
     }
     const selected = state.players.filter(p => selectedIds.has(p.id));
-    const tournament = generateBracket(crypto.randomUUID(), name.trim() || `Tournament #${tournamentNumber}`, selected);
+    const tournament = generateBracket(crypto.randomUUID(), name.trim() || `Tournament #${tournamentNumber}`, selected, seeding);
     onCreate(tournament);
   }
 
@@ -185,6 +214,39 @@ function CreateTournament({
           onChange={e => setName(e.target.value)}
           className="w-full bg-[#22263a] border border-[#2e3350] rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-indigo-500 min-h-[48px]"
         />
+      </div>
+
+      <div className="bg-[#1a1d27] border border-[#2e3350] rounded-2xl p-4 mb-4">
+        <label className="block text-xs font-bold tracking-widest uppercase text-slate-500 mb-2">
+          Seeding
+        </label>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setSeeding('ranked')}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors min-h-[48px] ${
+              seeding === 'ranked'
+                ? 'bg-indigo-600 text-white border border-indigo-400'
+                : 'bg-[#22263a] text-slate-400 border border-[#2e3350] active:bg-[#2e3350]'
+            }`}
+          >
+            Ranked
+          </button>
+          <button
+            onClick={() => setSeeding('random')}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors min-h-[48px] ${
+              seeding === 'random'
+                ? 'bg-indigo-600 text-white border border-indigo-400'
+                : 'bg-[#22263a] text-slate-400 border border-[#2e3350] active:bg-[#2e3350]'
+            }`}
+          >
+            Random
+          </button>
+        </div>
+        <p className="text-xs text-slate-600 mt-2">
+          {seeding === 'ranked'
+            ? 'Seeded by ELO rating. Top seeds get favorable matchups.'
+            : 'Fully randomized bracket. All matchups are random.'}
+        </p>
       </div>
 
       <div className="bg-[#1a1d27] border border-[#2e3350] rounded-2xl p-4 mb-6">
@@ -556,6 +618,9 @@ function RecordMatchModal({
         >
           Save Result
         </button>
+        <p className="text-xs text-slate-600 text-center mt-3">
+          Results are permanent and cannot be edited after saving.
+        </p>
       </div>
     </div>
   );

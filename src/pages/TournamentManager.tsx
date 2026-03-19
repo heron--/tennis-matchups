@@ -537,12 +537,20 @@ function RecordMatchModal({
   onClose: () => void;
   onSave: (p1Score: number, p2Score: number, winnerId: string) => void;
 }) {
-  const [score1, setScore1] = useState('');
-  const [score2, setScore2] = useState('');
+  const [score1, setScore1] = useState('0');
+  const [score2, setScore2] = useState('0');
   const [winnerId, setWinnerId] = useState('');
 
   const p1Name = getPlayerName(matchup.player1Id);
   const p2Name = getPlayerName(matchup.player2Id);
+
+  function autoSelectWinner(s1: string, s2: string) {
+    const n1 = Number(s1);
+    const n2 = Number(s2);
+    if (s1 !== '' && s2 !== '' && n1 !== n2) {
+      setWinnerId(n1 > n2 ? matchup.player1Id! : matchup.player2Id!);
+    }
+  }
 
   const canSave = score1 !== '' && score2 !== '' && winnerId;
 
@@ -566,7 +574,7 @@ function RecordMatchModal({
               inputMode="numeric"
               min="0"
               value={score1}
-              onChange={e => setScore1(e.target.value)}
+              onChange={e => { setScore1(e.target.value); autoSelectWinner(e.target.value, score2); }}
               placeholder="0"
               className="w-full bg-[#22263a] border border-[#2e3350] rounded-xl px-4 py-3 text-white text-base text-center focus:outline-none focus:border-indigo-500 min-h-[48px]"
             />
@@ -579,7 +587,7 @@ function RecordMatchModal({
               inputMode="numeric"
               min="0"
               value={score2}
-              onChange={e => setScore2(e.target.value)}
+              onChange={e => { setScore2(e.target.value); autoSelectWinner(score1, e.target.value); }}
               placeholder="0"
               className="w-full bg-[#22263a] border border-[#2e3350] rounded-xl px-4 py-3 text-white text-base text-center focus:outline-none focus:border-indigo-500 min-h-[48px]"
             />

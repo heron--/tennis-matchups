@@ -9,12 +9,21 @@ export function RankedMatchManager() {
 
   const [player1Id, setPlayer1Id] = useState('');
   const [player2Id, setPlayer2Id] = useState('');
-  const [score1, setScore1] = useState('');
-  const [score2, setScore2] = useState('');
+  const [score1, setScore1] = useState('0');
+  const [score2, setScore2] = useState('0');
   const [winnerId, setWinnerId] = useState('');
 
   const player1 = players.find(p => p.id === player1Id) ?? null;
   const player2 = players.find(p => p.id === player2Id) ?? null;
+
+  function autoSelectWinner(s1: string, s2: string) {
+    if (!player1 || !player2) return;
+    const n1 = Number(s1);
+    const n2 = Number(s2);
+    if (s1 !== '' && s2 !== '' && n1 !== n2) {
+      setWinnerId(n1 > n2 ? player1.id : player2.id);
+    }
+  }
 
   const canSubmit =
     player1Id &&
@@ -35,8 +44,8 @@ export function RankedMatchManager() {
       'ranked'
     );
     showToast('Match recorded!');
-    setScore1('');
-    setScore2('');
+    setScore1('0');
+    setScore2('0');
     setWinnerId('');
   }
 
@@ -85,13 +94,13 @@ export function RankedMatchManager() {
           <ScoreInput
             label={player1?.name ?? 'Player 1'}
             value={score1}
-            onChange={setScore1}
+            onChange={v => { setScore1(v); autoSelectWinner(v, score2); }}
           />
           <span className="text-slate-600 font-bold text-lg shrink-0">vs</span>
           <ScoreInput
             label={player2?.name ?? 'Player 2'}
             value={score2}
-            onChange={setScore2}
+            onChange={v => { setScore2(v); autoSelectWinner(score1, v); }}
           />
         </div>
       </div>

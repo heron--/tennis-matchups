@@ -13,7 +13,7 @@ interface TopBarProps {
 
 export function TopBar({ onMenuOpen }: TopBarProps) {
   const { pathname } = useLocation();
-  const pageLabel = PAGE_LABELS[pathname] ?? '';
+  const pageLabel = PAGE_LABELS[pathname] ?? (pathname.startsWith('/players/') ? 'Player Detail' : '');
 
   return (
     <header className="fixed top-0 left-0 right-0 z-30 flex items-center gap-3 px-4 h-14 bg-[#1a1d27]/95 backdrop-blur border-b border-[#2e3350]">

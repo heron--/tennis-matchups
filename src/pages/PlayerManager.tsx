@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { showToast } from '../components/Toast';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -6,6 +7,7 @@ import type { Player } from '../types';
 
 export function PlayerManager() {
   const { state, addPlayer, updatePlayer, deletePlayer } = useApp();
+  const navigate = useNavigate();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [actionPlayer, setActionPlayer] = useState<Player | null>(null);
   const [renamePlayer, setRenamePlayer] = useState<Player | null>(null);
@@ -20,7 +22,8 @@ export function PlayerManager() {
       ) : (
         <PlayerList
           players={sorted}
-          onPlayerTap={setActionPlayer}
+          onPlayerTap={(p) => navigate(`/players/${p.id}`)}
+          onPlayerLongPress={setActionPlayer}
           onAddTap={() => setAddModalOpen(true)}
         />
       )}
@@ -107,10 +110,12 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 function PlayerList({
   players,
   onPlayerTap,
+  onPlayerLongPress,
   onAddTap,
 }: {
   players: Player[];
   onPlayerTap: (p: Player) => void;
+  onPlayerLongPress: (p: Player) => void;
   onAddTap: () => void;
 }) {
   return (
@@ -131,6 +136,7 @@ function PlayerList({
             player={player}
             rank={index + 1}
             onTap={() => onPlayerTap(player)}
+            onLongPress={() => onPlayerLongPress(player)}
           />
         ))}
       </div>
@@ -153,19 +159,50 @@ function PlayerCard({
   player,
   rank,
   onTap,
+  onLongPress,
 }: {
   player: Player;
   rank: number;
   onTap: () => void;
+  onLongPress: () => void;
 }) {
   const total = player.wins + player.losses;
   const winRate = total > 0 ? Math.round((player.wins / total) * 100) : null;
   const isUnranked = total === 0;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
+
+  function handlePointerDown() {
+    didLongPress.current = false;
+    timerRef.current = setTimeout(() => {
+      didLongPress.current = true;
+      onLongPress();
+    }, 500);
+  }
+
+  function handlePointerUp() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  function handleClick(e: React.MouseEvent) {
+    if (didLongPress.current) {
+      e.preventDefault();
+      return;
+    }
+    onTap();
+  }
 
   return (
     <button
-      onClick={onTap}
-      className="w-full bg-[#1a1d27] border border-[#2e3350] rounded-2xl px-4 py-4 flex items-center gap-4 active:bg-[#22263a] transition-colors text-left min-h-[72px]"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onClick={handleClick}
+      onContextMenu={e => e.preventDefault()}
+      className="w-full bg-[#1a1d27] border border-[#2e3350] rounded-2xl px-4 py-4 flex items-center gap-4 active:bg-[#22263a] transition-colors text-left min-h-[72px] select-none"
     >
       {/* Rank */}
       <div className="w-8 text-center shrink-0">

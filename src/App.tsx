@@ -11,6 +11,7 @@ import { PlayerManager } from './pages/PlayerManager';
 import { TournamentManager } from './pages/TournamentManager';
 import { RankedMatchManager } from './pages/RankedMatchManager';
 import { CalibrationManager } from './pages/CalibrationManager';
+import { PlayerDetail } from './pages/PlayerDetail';
 
 function AppShell() {
   const appState = useAppState();
@@ -75,6 +76,7 @@ function AppShell() {
       <main className="flex-1 pt-14">
         <Routes>
           <Route path="/" element={<PlayerManager />} />
+          <Route path="/players/:id" element={<PlayerDetail />} />
           <Route path="/tournaments" element={<TournamentManager />} />
           <Route path="/ranked" element={<RankedMatchManager />} />
           <Route path="/calibration" element={<CalibrationManager />} />

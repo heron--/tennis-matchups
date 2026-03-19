@@ -16,7 +16,7 @@ export interface MatchRecord {
   winnerId: string;
   eloChange: number;
   timestamp: string;
-  context: 'ranked' | 'tournament' | 'calibration';
+  context: 'ranked' | 'tournament' | 'calibration' | 'adjustment';
   tournamentId?: string;
   calibrationSessionId?: string;
 }

@@ -129,7 +129,7 @@ function PlayerList({
         </div>
       </div>
 
-      <div className="px-4 pb-24 flex flex-col gap-2">
+      <div className="px-4 pb-8 flex flex-col gap-2">
         {players.map((player, index) => (
           <PlayerCard
             key={player.id}
@@ -139,18 +139,17 @@ function PlayerList({
             onLongPress={() => onPlayerLongPress(player)}
           />
         ))}
-      </div>
 
-      {/* FAB */}
-      <button
-        onClick={onAddTap}
-        className="fixed bottom-6 right-6 bg-indigo-600 active:bg-indigo-700 text-white font-bold rounded-full w-14 h-14 flex items-center justify-center shadow-xl transition-colors z-20"
-        aria-label="Add player"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-6 h-6" aria-hidden>
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
+        <button
+          onClick={onAddTap}
+          className="w-full border border-dashed border-[#2e3350] rounded-2xl px-4 py-4 flex items-center justify-center gap-2 text-slate-500 active:bg-[#22263a] transition-colors min-h-[56px]"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-5 h-5" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span className="font-semibold text-sm">Add Player</span>
+        </button>
+      </div>
     </div>
   );
 }

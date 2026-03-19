@@ -128,6 +128,29 @@ export function useAppState() {
     setState(s => ({ ...s, calibrationSessions: s.calibrationSessions.filter(cs => cs.id !== id) }));
   }, []);
 
+  const nudgeElo = useCallback((playerId: string, delta: number) => {
+    if (delta === 0) return;
+    const absDelta = Math.abs(delta);
+    const match: MatchRecord = {
+      id: uuid(),
+      player1Id: playerId,
+      player2Id: playerId,
+      player1Score: 0,
+      player2Score: 0,
+      winnerId: delta > 0 ? playerId : '',
+      eloChange: absDelta,
+      timestamp: new Date().toISOString(),
+      context: 'adjustment',
+    };
+    setState(s => ({
+      ...s,
+      players: s.players.map(p =>
+        p.id === playerId ? { ...p, elo: p.elo + delta } : p
+      ),
+      matches: [match, ...s.matches],
+    }));
+  }, []);
+
   const importState = useCallback((newState: AppState) => {
     clearState();
     setState(newState);
@@ -152,6 +175,7 @@ export function useAppState() {
     updatePlayer,
     deletePlayer,
     recordMatch,
+    nudgeElo,
     addTournament,
     deleteTournament,
     updateTournament,

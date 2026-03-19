@@ -10,10 +10,11 @@ import type { MatchRecord, Player } from '../types';
 export function PlayerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { state, updatePlayer, deletePlayer, nudgeElo } = useApp();
+  const { state, updatePlayer, deletePlayer, deleteMatch, nudgeElo } = useApp();
   const [showRename, setShowRename] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
+  const [deleteMatchId, setDeleteMatchId] = useState<string | null>(null);
 
   const player = state.players.find(p => p.id === id);
   if (!player) {
@@ -116,7 +117,7 @@ export function PlayerDetail() {
         ) : (
           <div className="flex flex-col gap-2">
             {playerMatches.map(match => (
-              <MatchRow key={match.id} match={match} player={player} players={state.players} />
+              <MatchRow key={match.id} match={match} player={player} players={state.players} onDelete={() => setDeleteMatchId(match.id)} />
             ))}
           </div>
         )}
@@ -155,6 +156,22 @@ export function PlayerDetail() {
             showToast(`ELO ${delta > 0 ? '+' : ''}${delta}`);
             setShowNudge(false);
           }}
+        />
+      )}
+
+      {/* Delete match confirm */}
+      {deleteMatchId && (
+        <ConfirmModal
+          title="Delete Match"
+          message="This will remove the match and reverse the ELO changes for both players. This cannot be undone."
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => {
+            deleteMatch(deleteMatchId);
+            showToast('Match deleted', 'error');
+            setDeleteMatchId(null);
+          }}
+          onCancel={() => setDeleteMatchId(null)}
         />
       )}
 
@@ -308,13 +325,27 @@ function MatchRow({
   match,
   player,
   players,
+  onDelete,
 }: {
   match: MatchRecord;
   player: Player;
   players: Player[];
+  onDelete: () => void;
 }) {
   const date = new Date(match.timestamp);
   const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+
+  const deleteBtn = (
+    <button
+      onClick={onDelete}
+      className="shrink-0 p-1.5 rounded-lg text-slate-600 active:text-red-400 active:bg-red-950/30"
+      aria-label="Delete match"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      </svg>
+    </button>
+  );
 
   if (match.context === 'adjustment') {
     const isPositive = match.winnerId === player.id;
@@ -331,10 +362,11 @@ function MatchRow({
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className={`text-sm font-bold ${isPositive ? 'text-amber-400' : 'text-amber-400'}`}>
+          <div className="text-sm font-bold text-amber-400">
             {isPositive ? '+' : '-'}{match.eloChange}
           </div>
         </div>
+        {deleteBtn}
       </div>
     );
   }
@@ -374,6 +406,7 @@ function MatchRow({
           {isWinner ? '+' : '-'}{match.eloChange}
         </div>
       </div>
+      {deleteBtn}
     </div>
   );
 }

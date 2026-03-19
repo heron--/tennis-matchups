@@ -128,6 +128,39 @@ export function useAppState() {
     setState(s => ({ ...s, calibrationSessions: s.calibrationSessions.filter(cs => cs.id !== id) }));
   }, []);
 
+  const deleteMatch = useCallback((matchId: string) => {
+    setState(s => {
+      const match = s.matches.find(m => m.id === matchId);
+      if (!match) return s;
+
+      let updatedPlayers = s.players;
+
+      if (match.context === 'adjustment') {
+        // Reverse the adjustment
+        const isPositive = match.winnerId === match.player1Id;
+        const delta = isPositive ? -match.eloChange : match.eloChange;
+        updatedPlayers = s.players.map(p =>
+          p.id === match.player1Id ? { ...p, elo: p.elo + delta } : p
+        );
+      } else {
+        // Reverse a regular match: undo ELO and W/L
+        const winnerId = match.winnerId;
+        const loserId = match.player1Id === winnerId ? match.player2Id : match.player1Id;
+        updatedPlayers = s.players.map(p => {
+          if (p.id === winnerId) return { ...p, elo: p.elo - match.eloChange, wins: Math.max(0, p.wins - 1) };
+          if (p.id === loserId) return { ...p, elo: p.elo + match.eloChange, losses: Math.max(0, p.losses - 1) };
+          return p;
+        });
+      }
+
+      return {
+        ...s,
+        players: updatedPlayers,
+        matches: s.matches.filter(m => m.id !== matchId),
+      };
+    });
+  }, []);
+
   const nudgeElo = useCallback((playerId: string, delta: number) => {
     if (delta === 0) return;
     const absDelta = Math.abs(delta);
@@ -175,6 +208,7 @@ export function useAppState() {
     updatePlayer,
     deletePlayer,
     recordMatch,
+    deleteMatch,
     nudgeElo,
     addTournament,
     deleteTournament,
